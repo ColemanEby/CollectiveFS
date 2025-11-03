@@ -1,0 +1,7 @@
+# CollectiveFS Python Dependencies
+watchdog>=2.0.0
+cryptography>=3.0.0
+simplejson>=3.0.0
+aiortc>=1.0.0
+uvloop>=0.14.0
+pyinstaller

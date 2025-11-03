@@ -62,7 +62,14 @@ lib/decoder
 *.mk4
 *.json.tmp
 *.log
+test123456.json
 
 # OS files
 .DS_Store
 Thumbs.db
+
+# Local cloned source code (now using Go modules instead)
+# Note: reedsolomon/ and cryptography/ are kept for reference but not used in Go build
+# cryptography/ is Python-only and not needed for Go version
+
+cfs

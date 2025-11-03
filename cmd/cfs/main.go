@@ -31,7 +31,7 @@ func main() {
 	version := flag.Bool("version", false, "Show version")
 	input := flag.String("input", "", "Enter source directory to watch")
 	_ = flag.String("output", "", "Enter the directory to copy to") // Reserved for future use
-	_ = flag.Bool("service", false, "Run continuously")            // Reserved for future use
+	_ = flag.Bool("service", false, "Run continuously")             // Reserved for future use
 	configDir := flag.String("config-dir", "", "Configuration directory (overrides default)")
 
 	flag.Parse()
@@ -105,7 +105,7 @@ func main() {
 	enc := encoder.NewEncoder(cfg.GetEncoderPath())
 
 	// Start HTTP server (matching Python's run_server)
-	server.RunServer(hostName, portNumber, cfg.ProgramPath)
+	server.RunServer(hostName, portNumber, cfg.ProgramPath, cfg.ConfigDir)
 
 	// File processing callback - matches Python's finishedEncoding -> encryptChunks workflow
 	onFileReady := func(fileInfo interface{}) {
@@ -155,7 +155,14 @@ func main() {
 			return
 		}
 
-		// Print file info as JSON (matching Python's json.dumps)
+		// Store file metadata for later retrieval
+		if err := storage.StoreFileMetadata(cfg.CachePath, fileInfoMap); err != nil {
+			logger.Error("Failed to store file metadata: %v", err)
+		} else {
+			logger.Info("Stored metadata for file: %s (ID: %s)", filePath, fileInfoMap["id"])
+		}
+
+		// Print file info as JSON in debug mode (matching Python's json.dumps)
 		if jsonStr, err := json.MarshalIndent(fileInfoMap, "", "  "); err == nil {
 			logger.Debug("File info: %s", string(jsonStr))
 		}
@@ -196,4 +203,3 @@ func main() {
 		}
 	}
 }
-

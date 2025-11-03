@@ -13,17 +13,26 @@ import (
 // ServerReqHandler handles HTTP requests, matching Python's ServerReqHandler class.
 type ServerReqHandler struct {
 	programPath string
+	configPath  string // Path to config directory for serving files
 }
 
 // NewServerReqHandler creates a new HTTP request handler.
-func NewServerReqHandler(programPath string) *ServerReqHandler {
+func NewServerReqHandler(programPath, configPath string) *ServerReqHandler {
 	return &ServerReqHandler{
 		programPath: programPath,
+		configPath:  configPath,
 	}
 }
 
 // ServeHTTP implements http.Handler interface.
 func (h *ServerReqHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	// Handle API endpoints
+	if r.URL.Path == "/api/status" {
+		HandleStatus(w, r)
+		return
+	}
+
+	// Handle regular requests
 	switch r.Method {
 	case http.MethodGet:
 		h.doGET(w, r)
@@ -60,13 +69,12 @@ func (h *ServerReqHandler) doHEAD(w http.ResponseWriter, r *http.Request) {
 	h.setHeaders(w)
 }
 
-// doPOST handles POST requests, matching Python's do_POST.
+// doPOST handles POST requests.
+// For now, this is a placeholder for future API functionality.
+// The original Python code wrote to test123456.json and returned for_presen.py,
+// which were clearly test/debug artifacts, so we've removed those.
 func (h *ServerReqHandler) doPOST(w http.ResponseWriter, r *http.Request) {
-	log.Println("in post method")
-
-	h.setHeaders(w)
-
-	// Read request body
+	// Read and parse request body
 	dataString, err := io.ReadAll(r.Body)
 	if err != nil {
 		log.Printf("failed to read request body: %v", err)
@@ -75,7 +83,6 @@ func (h *ServerReqHandler) doPOST(w http.ResponseWriter, r *http.Request) {
 	}
 	defer r.Body.Close()
 
-	// Parse JSON (matching Python's simplejson.loads)
 	var data interface{}
 	if err := json.Unmarshal(dataString, &data); err != nil {
 		log.Printf("failed to parse JSON: %v", err)
@@ -83,23 +90,16 @@ func (h *ServerReqHandler) doPOST(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Write to test123456.json (matching Python behavior)
-	testFilePath := filepath.Join(h.programPath, "test123456.json")
-	if err := os.WriteFile(testFilePath, dataString, 0644); err != nil {
-		log.Printf("failed to write test file: %v", err)
-	}
+	log.Printf("Received POST data: %v", data)
 
-	log.Printf("%v", data)
-
-	// Try to read for_presen.py and send it (matching Python behavior)
-	presentPath := filepath.Join(h.programPath, "for_presen.py")
-	if f, err := os.Open(presentPath); err == nil {
-		defer f.Close()
-		io.Copy(w, f)
-	} else {
-		// File doesn't exist, just return OK (matching Python behavior if file missing)
-		w.WriteHeader(http.StatusOK)
+	// Return JSON response acknowledging receipt
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	response := map[string]interface{}{
+		"status":  "received",
+		"message": "POST request received (API functionality coming soon)",
 	}
+	json.NewEncoder(w).Encode(response)
 }
 
 // setHeaders sets response headers, matching Python's _set_headers.
@@ -109,8 +109,8 @@ func (h *ServerReqHandler) setHeaders(w http.ResponseWriter) {
 }
 
 // RunServer starts the HTTP server in a goroutine, matching Python's run_server.
-func RunServer(host string, port int, programPath string) {
-	handler := NewServerReqHandler(programPath)
+func RunServer(host string, port int, programPath, configPath string) {
+	handler := NewServerReqHandler(programPath, configPath)
 
 	addr := fmt.Sprintf("%s:%d", host, port)
 	httpd := &http.Server{
@@ -120,6 +120,8 @@ func RunServer(host string, port int, programPath string) {
 
 	go func() {
 		log.Printf("Starting HTTP server on %s", addr)
+		log.Printf("  - Web UI: http://%s/", addr)
+		log.Printf("  - Status API: http://%s/api/status", addr)
 		if err := httpd.ListenAndServe(); err != nil && err != http.ErrServerClosed {
 			log.Printf("HTTP server error: %v", err)
 		}

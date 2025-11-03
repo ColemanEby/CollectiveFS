@@ -1,13 +1,16 @@
 module github.com/collectivefs/cfs
 
-go 1.21
+go 1.22
 
 require (
 	github.com/fsnotify/fsnotify v1.7.0
 	github.com/google/uuid v1.6.0
+	github.com/klauspost/reedsolomon v1.12.5
 	github.com/pion/webrtc/v3 v3.2.40
 	golang.org/x/crypto v0.21.0
 )
+
+require github.com/klauspost/cpuid/v2 v2.2.10 // indirect
 
 require (
 	github.com/davecgh/go-spew v1.1.1 // indirect
@@ -30,8 +33,6 @@ require (
 	github.com/pmezard/go-difflib v1.0.0 // indirect
 	github.com/stretchr/testify v1.9.0 // indirect
 	golang.org/x/net v0.22.0 // indirect
-	golang.org/x/sys v0.18.0 // indirect
+	golang.org/x/sys v0.30.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )
-
-replace github.com/klauspost/reedsolomon => ./reedsolomon

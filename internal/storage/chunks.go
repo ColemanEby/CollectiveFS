@@ -19,9 +19,14 @@ func ProcessChunks(fileFolder string, fileInfo map[string]interface{}, encryptCh
 		return fmt.Errorf("failed to read file folder: %w", err)
 	}
 
-	chunks := []map[string]interface{}{}
+	// First pass: collect all chunk files and their numbers
+	type chunkEntry struct {
+		chunkNum int
+		path     string
+		name     string
+	}
+	var chunkFiles []chunkEntry
 
-	// Process each file in the folder
 	for _, entry := range entries {
 		if entry.IsDir() {
 			continue
@@ -39,37 +44,67 @@ func ProcessChunks(fileFolder string, fileInfo map[string]interface{}, encryptCh
 			continue // Skip files without numeric extension
 		}
 
-		chunkPath := filepath.Join(fileFolder, entry.Name())
-		chunkID := uuid.New().String()
+		chunkFiles = append(chunkFiles, chunkEntry{
+			chunkNum: chunkNum,
+			path:     filepath.Join(fileFolder, entry.Name()),
+			name:     entry.Name(),
+		})
+	}
 
+	// Sort chunks by number to process in order
+	for i := 0; i < len(chunkFiles)-1; i++ {
+		for j := i + 1; j < len(chunkFiles); j++ {
+			if chunkFiles[i].chunkNum > chunkFiles[j].chunkNum {
+				chunkFiles[i], chunkFiles[j] = chunkFiles[j], chunkFiles[i]
+			}
+		}
+	}
+
+	// Second pass: process chunks in order and build chunk array
+	chunks := make([]map[string]interface{}, 0)
+	maxChunkNum := 0
+	if len(chunkFiles) > 0 {
+		maxChunkNum = chunkFiles[len(chunkFiles)-1].chunkNum
+	}
+
+	for _, cf := range chunkFiles {
+		chunkID := uuid.New().String()
 		chunkInfo := map[string]interface{}{
-			"num":    chunkNum,
+			"num":    cf.chunkNum,
 			"id":     chunkID,
-			"path":   chunkPath,
+			"path":   cf.path,
 			"offer":  map[string]interface{}{},
 			"answer": map[string]interface{}{},
 		}
 
 		// Encrypt chunk
-		if err := encryptChunk(chunkPath); err != nil {
-			return fmt.Errorf("failed to encrypt chunk %d: %w", chunkNum, err)
+		if err := encryptChunk(cf.path); err != nil {
+			return fmt.Errorf("failed to encrypt chunk %d: %w", cf.chunkNum, err)
 		}
 
 		// Insert chunk at correct position (matching Python's insert behavior)
-		// Since we're processing in order, append is fine, but Python uses insert
-		if chunkNum >= len(chunks) {
-			// Extend slice
-			for len(chunks) <= chunkNum {
+		if cf.chunkNum >= len(chunks) {
+			// Extend slice to accommodate this chunk number
+			for len(chunks) <= cf.chunkNum {
 				chunks = append(chunks, nil)
 			}
 		}
-		chunks[chunkNum] = chunkInfo
+		chunks[cf.chunkNum] = chunkInfo
 
 		// Call callback for chunk transfer (matching Python threading behavior)
 		if onChunkReady != nil {
 			onChunkReady(fileInfo, chunkInfo)
 		}
 	}
+
+	// Remove nil entries (if any chunks were skipped)
+	filteredChunks := make([]map[string]interface{}, 0, len(chunks))
+	for i := 0; i <= maxChunkNum; i++ {
+		if i < len(chunks) && chunks[i] != nil {
+			filteredChunks = append(filteredChunks, chunks[i])
+		}
+	}
+	chunks = filteredChunks
 
 	// Update fileInfo with chunks
 	fileInfo["chunks"] = chunks

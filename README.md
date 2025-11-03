@@ -27,3 +27,11 @@ FUSE
 
 ## Getting a file:
 ![Alt text](/images/CollectiveFS_get_file.png?raw=true "Saving files")
+
+
+
+# Colemans Notes
+
+## Questions
+- Is it intentional that a pycache was committed to the repo? 
+- What are the goals with using Reed Solomon Encoding over other encoding methods for 

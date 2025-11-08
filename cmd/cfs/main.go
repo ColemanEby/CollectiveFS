@@ -87,7 +87,7 @@ func main() {
 		logger.Fatal("Failed to load or generate key: %v", err)
 	}
 
-	if key != nil && len(key) > 0 {
+	if len(key) > 0 {
 		if _, err := os.Stat(cfg.KeyFile); err == nil {
 			logger.Info("Found key.")
 		} else {
